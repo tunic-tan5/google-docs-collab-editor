@@ -50,7 +50,9 @@ import {
   PlusSquare,
   BookOpen,
   Star,
-  Compass
+  Compass,
+  Pencil,
+  UserMinus
 } from "lucide-react";
 
 /* ---------------- COLLABORATIVE CURSORS CONFIG ---------------- */
@@ -218,6 +220,7 @@ export const EditorPage = () => {
   const [error, setError] = useState("");
   const [title, setTitle] = useState("Untitled Document");
   const [isReadOnly, setIsReadOnly] = useState(true);
+  const titleInputRef = useRef(null);
   const [saveStatus, setSaveStatus] = useState("Saved to cloud");
   const [onlineCollaborators, setOnlineCollaborators] = useState([]);
   const [typingUsers, setTypingUsers] = useState({});
@@ -520,11 +523,36 @@ export const EditorPage = () => {
       } catch (err) {
         console.error("Autosave error:", err);
         setSaveStatus("Error saving");
+
+        if (err.response && err.response.data && err.response.data.message) {
+          const msg = err.response.data.message;
+          if (msg.includes("Name already used")) {
+            alert(msg);
+            // Revert title to previous valid title
+            if (docData) {
+              const previousTitle = docData.title || "Untitled Document";
+              setTitle(previousTitle);
+              if (socket) {
+                socket.emit("title-update", {
+                  documentId: id,
+                  title: previousTitle,
+                });
+              }
+            }
+          }
+        }
       }
     }, 1500);
   };
 
   /* ---------------- TITLE EDIT HANDLERS ---------------- */
+  const handleRenameClick = () => {
+    if (titleInputRef.current) {
+      titleInputRef.current.focus();
+      titleInputRef.current.select();
+    }
+  };
+
   const handleTitleChange = (e) => {
     const newTitle = e.target.value;
     setTitle(newTitle);
@@ -976,6 +1004,7 @@ export const EditorPage = () => {
           <div className="flex flex-col min-w-0 text-left">
             <div className="flex items-center space-x-2">
               <input
+                ref={titleInputRef}
                 value={title}
                 disabled={isReadOnly || versionPreview}
                 onChange={handleTitleChange}
@@ -983,6 +1012,16 @@ export const EditorPage = () => {
                 className="text-base font-bold bg-transparent border-b border-transparent hover:border-slate-200 focus:border-blue-500 focus:outline-none text-slate-800 leading-none py-0.5 truncate transition-all max-w-[240px] font-sans"
                 title={isReadOnly ? "View Only Title" : "Rename Document"}
               />
+              
+              {!isReadOnly && !versionPreview && (
+                <button
+                  onClick={handleRenameClick}
+                  title="Rename Document"
+                  className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-500 hover:text-blue-600 hover:scale-105 transition-all flex items-center justify-center shrink-0 cursor-pointer"
+                >
+                  <Pencil size={16} />
+                </button>
+              )}
               
               {isReadOnly && (
                 <div className="flex items-center space-x-1 text-[9px] font-bold bg-slate-100 border border-slate-200/50 text-slate-500 px-2 py-0.5 rounded-full uppercase select-none">
@@ -1007,16 +1046,16 @@ export const EditorPage = () => {
         <div className="flex items-center space-x-1 border-r border-slate-200 pr-4 mr-4 no-print">
           <button
             onClick={() => setIsLeftSidebarOpen(!isLeftSidebarOpen)}
-            title="Toggle Outline Sidebar"
+            title="Toggle Collaborators Sidebar"
             className={`p-1.5 rounded-lg transition-all ${
               isLeftSidebarOpen ? "bg-slate-100 text-slate-800" : "text-slate-500 hover:bg-slate-50"
             }`}
           >
-            <Compass size={16} />
+            <Users size={16} />
           </button>
           <button
             onClick={() => setIsRightSidebarOpen(!isRightSidebarOpen)}
-            title="Toggle Reviews & History Sidebar"
+            title="Toggle Chat & Versions Sidebar"
             className={`p-1.5 rounded-lg transition-all ${
               isRightSidebarOpen ? "bg-slate-100 text-slate-800" : "text-slate-500 hover:bg-slate-50"
             }`}
@@ -1466,15 +1505,16 @@ export const EditorPage = () => {
       )}
 
       {/* 4. WORKSPACE CONTENT WRAPPER */}
-      <div className="flex-1 flex flex-row overflow-hidden relative">
+      <div className="flex-1 flex flex-row overflow-hidden relative bg-slate-50 p-4 gap-4">
         
-        {/* LEFT OUTLINE SIDEBAR */}
+        {/* LEFT COLLABORATORS SIDEBAR */}
         {isLeftSidebarOpen && !isZenMode && (
-          <aside className="w-64 border-r border-slate-200 bg-white flex flex-col h-full shrink-0 no-print animate-slide-in relative select-none">
+          <aside className="w-64 bg-white flex flex-col h-full shrink-0 no-print animate-slide-in relative select-none rounded-2xl border border-slate-200/60 shadow-sm overflow-hidden">
+            {/* Sidebar Header */}
             <div className="p-4 border-b border-slate-200 flex items-center justify-between bg-slate-50/50">
               <span className="font-bold text-slate-800 text-sm flex items-center space-x-1.5 text-left">
-                <Compass size={16} className="text-blue-600" />
-                <span>Document Nav</span>
+                <Users size={16} className="text-blue-600" />
+                <span>Collaborators</span>
               </span>
               <button
                 onClick={() => setIsLeftSidebarOpen(false)}
@@ -1484,70 +1524,100 @@ export const EditorPage = () => {
               </button>
             </div>
 
-            {/* Stars & Search */}
-            <div className="p-3 border-b border-slate-100 space-y-2">
-              <button
-                onClick={() => setIsOutlineStarred(!isOutlineStarred)}
-                className={`flex w-full items-center space-x-2 px-2.5 py-1.5 rounded-lg text-xs font-semibold border transition-all ${
-                  isOutlineStarred ? "bg-amber-50 border-amber-200 text-amber-600" : "border-slate-100 hover:bg-slate-50 text-slate-500"
-                }`}
-              >
-                <Star size={13} className={isOutlineStarred ? "fill-amber-500 text-amber-500" : ""} />
-                <span>{isOutlineStarred ? "Starred Workspace" : "Star This Document"}</span>
-              </button>
-
-              <div className="flex items-center space-x-1.5 bg-slate-50 border border-slate-200/50 px-2.5 py-1.5 rounded-xl">
-                <Search size={12} className="text-slate-400" />
-                <input
-                  type="text"
-                  placeholder="Find outline heading..."
-                  className="bg-transparent text-[11px] focus:outline-none text-slate-700 w-full placeholder-slate-400"
-                />
-              </div>
-            </div>
-
-            {/* Heading outlines map */}
-            <div className="flex-1 overflow-y-auto p-4 text-left">
-              <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-3">
-                Table of Contents
-              </h4>
-
-              {documentOutline.length > 0 ? (
-                <div className="space-y-1 border-l border-slate-100 pl-1.5">
-                  {documentOutline.map((heading) => {
-                    const indent = heading.level === 2 
-                      ? "pl-3.5 text-slate-500" 
-                      : heading.level === 3 
-                        ? "pl-7 text-slate-400 font-medium" 
-                        : heading.level === 4 
-                          ? "pl-10 text-slate-400/80 text-[11px] font-medium" 
-                          : "font-bold text-slate-700";
-                    return (
-                      <button
-                        key={heading.id}
-                        onClick={() => handleScrollToHeading(heading)}
-                        className={`flex w-full py-1 text-xs hover:text-blue-600 transition-all text-left truncate leading-tight select-none cursor-pointer ${indent}`}
-                      >
-                        {heading.text}
-                      </button>
-                    );
-                  })}
-                </div>
-              ) : (
-                <div className="py-8 text-center border border-dashed border-slate-200 rounded-xl">
-                  <FileText size={28} className="text-slate-300 mx-auto mb-2" />
-                  <p className="text-xs font-bold text-slate-500">No outline headings</p>
-                  <p className="text-[10px] text-slate-400 mt-1 px-3">
-                    Headings (H1 to H4) applied in the sheet will appear here dynamically.
-                  </p>
+            {/* Collaborators List Area */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-5 text-left">
+              {/* 1. Document Owner */}
+              {docData?.owner && (
+                <div>
+                  <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">
+                    Owner
+                  </h4>
+                  <div className="flex items-center space-x-3 p-2 rounded-xl border border-slate-50 bg-slate-50/30">
+                    <div className={`h-8 w-8 rounded-full shrink-0 ${getAvatarColor(docData.owner.firstName || "O")} text-white flex items-center justify-center text-xs font-bold shadow-inner`}>
+                      {((docData.owner.firstName?.[0] || "") + (docData.owner.lastName?.[0] || "")).toUpperCase() || "O"}
+                    </div>
+                    <div className="min-w-0 text-left">
+                      <p className="text-xs font-bold text-slate-800 leading-tight truncate">
+                        {`${docData.owner.firstName || ""} ${docData.owner.lastName || ""}`.trim() || "Owner"}
+                      </p>
+                      <span className="text-[10px] text-blue-600 font-semibold bg-blue-50 px-1.5 py-0.5 rounded mt-1 inline-block">
+                        Owner
+                      </span>
+                    </div>
+                  </div>
                 </div>
               )}
+
+              {/* 2. Shared Collaborators */}
+              <div className="pt-2">
+                <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2.5">
+                  Shared People
+                </h4>
+                
+                <div className="space-y-2">
+                  {docData?.collaborators && docData.collaborators.length > 0 ? (
+                    docData.collaborators.map((collab) => {
+                      if (!collab.user) return null;
+                      const collabUser = collab.user;
+                      const collabUserId = collabUser._id;
+                      const name = `${collabUser.firstName || ""} ${collabUser.lastName || ""}`.trim() || "Collaborator";
+                      const initials = ((collabUser.firstName?.[0] || "") + (collabUser.lastName?.[0] || "")).toUpperCase() || "C";
+                      const isOnline = onlineCollaborators.some((oc) => oc.userId === collabUserId);
+
+                      return (
+                        <div key={collabUserId} className="flex items-center justify-between p-2 rounded-xl border border-slate-50 hover:bg-slate-50/40 transition-all gap-2">
+                          <div className="flex items-center space-x-3 min-w-0 flex-1">
+                            {/* Profile Avatar */}
+                            <div className="relative shrink-0">
+                              <div className={`h-8 w-8 rounded-full ${getAvatarColor(collabUser.firstName || "C")} text-white flex items-center justify-center text-xs font-bold shadow-inner`}>
+                                {initials}
+                              </div>
+                              <span className={`absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full ring-2 ring-white ${isOnline ? "bg-green-500 animate-pulse" : "bg-slate-300"}`} />
+                            </div>
+                            
+                            {/* Name and Role */}
+                            <div className="min-w-0 text-left">
+                              <p className="text-xs font-bold text-slate-800 leading-tight truncate">
+                                {name}
+                                {collabUserId === currentUserId && <span className="text-[9px] text-slate-400 font-semibold ml-1">(You)</span>}
+                              </p>
+                              <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded mt-1 inline-block capitalize ${
+                                collab.role === "editor" ? "bg-emerald-50 text-emerald-600" : "bg-slate-100 text-slate-500"
+                              }`}>
+                                {collab.role}
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Remove button */}
+                          {(isOwner || collabUserId === currentUserId) && (
+                            <button
+                              onClick={() => handleRemoveCollaborator(collabUserId)}
+                              className="h-7 w-7 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-500 flex items-center justify-center transition-all cursor-pointer shrink-0"
+                              title={collabUserId === currentUserId ? "Leave document" : "Remove collaborator"}
+                            >
+                              <X size={14} />
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })
+                  ) : (
+                    <div className="py-6 text-center text-slate-450 border border-dashed border-slate-200 rounded-2xl bg-slate-50/30">
+                      <p className="text-xs font-medium text-slate-500">Not shared with anyone yet</p>
+                      <p className="text-[9px] text-slate-400 mt-1 px-3">
+                        Use the "Share" button in the header to invite other editors or viewers.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
           </aside>
         )}
 
         {/* CENTER DOCUMENT CANVAS AREA (CLEAN WHITE PAGE - GOOGLE DOCS STYLE) */}
-        <div className="flex-1 overflow-y-auto py-8 px-4 flex justify-center editor-workspace-container relative">
+        <div className="flex-1 overflow-y-auto py-8 px-4 flex justify-center editor-workspace-container relative bg-white rounded-2xl border border-slate-200/60 shadow-sm">
           <div className="flex flex-col space-y-4">
             
             {/* Real Page Canvas sheet */}
@@ -1581,12 +1651,12 @@ export const EditorPage = () => {
 
         {/* COLLAPSIBLE TABBED RIGHT DECK SIDEBAR (NOVA AI ASSISTANT ONLY) */}
         {isRightSidebarOpen && !isZenMode && (
-          <aside className="w-80 border-l border-slate-200 bg-white flex flex-col h-full shrink-0 sidebar-container no-print animate-slide-in relative select-none">
+          <aside className="w-80 bg-white flex flex-col h-full shrink-0 sidebar-container no-print animate-slide-in relative select-none rounded-2xl border border-slate-200/60 shadow-sm overflow-hidden">
             
             {/* Header Tabs switcher */}
             <div className="border-b border-slate-200 flex bg-slate-50/50 p-1 flex-shrink-0">
               {[
-                { id: "comments", label: "Reviews", icon: <MessageSquare size={13} /> },
+                { id: "comments", label: "Chat", icon: <MessageSquare size={13} /> },
                 { id: "history", label: "Versions", icon: <History size={13} /> }
               ].map((t) => (
                 <button
@@ -1612,60 +1682,115 @@ export const EditorPage = () => {
             </div>
 
             {/* TAB PANELS DECK AREA */}
-            <div className="flex-1 overflow-y-auto p-4 text-left">
+            <div className="flex-1 flex flex-col min-h-0 overflow-hidden text-left bg-white">
 
-              {/* TAB 1: ACTIVE COMMENT REVIEWS DECK */}
+              {/* TAB 1: ACTIVE CHAT REVIEWS DECK */}
               {rightActiveTab === "comments" && (
-                <div className="space-y-4">
-                  <h3 className="font-bold text-slate-800 text-xs">Document Comments</h3>
-                  
-                  <form onSubmit={handleAddComment} className="space-y-2">
+                <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
+                  {/* Chat message list area */}
+                  <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                    {comments.length > 0 ? (
+                      comments.map((c) => {
+                        const commentAuthor = c.username || c.author || "Unknown";
+                        const commentDate = c.createdAt
+                          ? new Date(c.createdAt).toLocaleTimeString("en-US", {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                              hour12: true
+                            })
+                          : "Just now";
+                        const commentId = c._id || c.id;
+
+                        const isMe = 
+                          c.userId === user?.userId || 
+                          c.userId === user?._id || 
+                          c.username === user?.firstName || 
+                          c.author === user?.firstName || 
+                          c.author?.firstName === user?.firstName ||
+                          (c.author && typeof c.author === 'string' && c.author.includes(user?.firstName || "N/A"));
+
+                        const initials = commentAuthor.slice(0, 2).toUpperCase();
+
+                        return (
+                          <div 
+                            key={commentId} 
+                            className={`flex items-start gap-2.5 max-w-[85%] ${
+                              isMe ? "ml-auto flex-row-reverse" : "mr-auto"
+                            }`}
+                          >
+                            {/* Avatar */}
+                            {!isMe && (
+                              <div className={`h-6 w-6 rounded-full shrink-0 text-white flex items-center justify-center text-[9px] font-bold shadow-sm ${getAvatarColor(commentAuthor)}`}>
+                                {initials}
+                              </div>
+                            )}
+
+                            {/* Bubble Container */}
+                            <div className="flex flex-col">
+                              {/* Author name (only for other users) */}
+                              {!isMe && (
+                                <span className="text-[10px] text-slate-500 font-bold ml-1 mb-0.5 text-left">
+                                  {commentAuthor}
+                                </span>
+                              )}
+                              
+                              {/* Message bubble */}
+                              <div 
+                                className={`p-3 rounded-2xl text-xs leading-relaxed ${
+                                  isMe 
+                                    ? "bg-blue-600 text-white rounded-br-none font-medium" 
+                                    : "bg-slate-100 text-slate-800 rounded-bl-none font-medium"
+                                }`}
+                              >
+                                <p className="break-words text-left">{c.text}</p>
+                              </div>
+                              
+                              {/* Time stamp */}
+                              <span 
+                                className={`text-[9px] text-slate-400 mt-1 select-none font-medium ${
+                                  isMe ? "text-right mr-1" : "text-left ml-1"
+                                }`}
+                              >
+                                {commentDate}
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      })
+                    ) : (
+                      <div className="h-full flex flex-col items-center justify-center text-slate-400 py-12 select-none">
+                        <MessageSquare size={32} className="text-slate-350 mb-2" />
+                        <p className="text-xs font-bold text-slate-500">No messages yet</p>
+                        <p className="text-[10px] text-slate-400 mt-1 px-6 text-center">
+                          Start the collaboration! Send a chat message below to other editors.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Chat input form pinned at bottom */}
+                  <form onSubmit={handleAddComment} className="p-3 border-t border-slate-100 bg-slate-50 flex gap-2 flex-shrink-0">
                     <input
                       type="text"
                       required
-                      placeholder="Add a collaborator review..."
+                      placeholder="Type a message..."
                       value={newCommentText}
                       onChange={(e) => setNewCommentText(e.target.value)}
-                      className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400 transition-all"
+                      className="flex-grow rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all font-sans"
                     />
                     <button
                       type="submit"
-                      className="w-full bg-slate-800 hover:bg-slate-900 text-white font-bold text-[10px] py-1.5 rounded-lg shadow transition-all cursor-pointer"
+                      className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs px-3.5 py-2 rounded-xl shadow-sm transition-all flex items-center justify-center cursor-pointer shrink-0"
                     >
-                      Post Comment
+                      Send
                     </button>
                   </form>
-
-                  <div className="space-y-2.5 mt-4">
-                    {comments.map((c) => {
-                      const commentAuthor = c.username || c.author || "Unknown";
-                      const commentDate = c.createdAt
-                        ? new Date(c.createdAt).toLocaleString("en-US", {
-                            month: "short",
-                            day: "numeric",
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })
-                        : (c.date || "Just now");
-                      const commentId = c._id || c.id;
-
-                      return (
-                        <div key={commentId} className="p-3 border border-slate-100 rounded-xl bg-slate-50/50 space-y-2 text-left">
-                          <div className="flex justify-between items-center select-none">
-                            <span className="text-[10px] font-bold text-slate-700">{commentAuthor}</span>
-                            <span className="text-[9px] text-slate-400">{commentDate}</span>
-                          </div>
-                          <p className="text-[11px] text-slate-500 leading-normal font-medium">{c.text}</p>
-                        </div>
-                      );
-                    })}
-                  </div>
                 </div>
               )}
 
               {/* TAB 2: CHECKPOINTS SLIDING VERSION HISTORY */}
               {rightActiveTab === "history" && (
-                <div className="space-y-3">
+                <div className="flex-grow overflow-y-auto p-4 text-left space-y-3">
                   <h3 className="font-bold text-slate-800 text-xs mb-1">Checkpoints Snapshots</h3>
                   <p className="text-[10px] text-slate-400 font-medium leading-normal mb-3">
                     Click a checkpoint below to live-preview document history. Restoring a version updates all online collaborators instantly.

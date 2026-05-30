@@ -19,6 +19,23 @@ documentRoute.post("/create", verifyToken, async (req, res) => {
       });
     }
 
+    // Check if an active document with title "Untitled Document" already exists for this user
+    const duplicateDoc = await DocumentModel.findOne({
+      $or: [
+        { owner: userId },
+        { "collaborators.user": userId }
+      ],
+      title: "Untitled Document",
+      isDeleted: { $ne: true }
+    });
+
+    if (duplicateDoc) {
+      return res.status(400).json({
+        success: false,
+        message: "Name already used! Please rename your existing 'Untitled Document' first.",
+      });
+    }
+
     const doc = await createDocument(userId);
 
     res.status(201).json({
@@ -170,6 +187,25 @@ documentRoute.put("/updatedoc/:id", verifyToken, async (req, res) => {
 
     // Update fields if provided
     if (title !== undefined) {
+      const cleanTitle = title.trim();
+      if (cleanTitle) {
+        const duplicateDoc = await DocumentModel.findOne({
+          _id: { $ne: id },
+          $or: [
+            { owner: req.user.userId },
+            { "collaborators.user": req.user.userId }
+          ],
+          title: cleanTitle,
+          isDeleted: { $ne: true }
+        });
+
+        if (duplicateDoc) {
+          return res.status(400).json({
+            success: false,
+            message: "Name already used! A document with this name already exists.",
+          });
+        }
+      }
       document.title = title;
     }
 
