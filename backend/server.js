@@ -17,8 +17,9 @@ config();
 const app = express();
 
 const allowedOrigins = [
-  "https://colloborative-document-editor.vercel.app",
-  "http://localhost:5173"
+  "https://google-docs-collab-editor.vercel.app",
+  "http://localhost:5173",
+  "http://localhost:3000"
 ];
 
 /* ---------------- MIDDLEWARES ---------------- */
