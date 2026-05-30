@@ -55,7 +55,7 @@ app.get("/", (req, res) => {
   );
 });
 
-/* ---------------- SOCKET + SERVER SETUP ---------------- */
+/* ---------------- SOCKET plus  SERVER SETUP ---------------- */
 const server = http.createServer(app);
 
 const io = new Server(server, {
