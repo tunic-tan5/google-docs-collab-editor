@@ -8,7 +8,7 @@ import { UserTypeModel } from "../models/userModel.js";
 export const userRoute = express.Router();
 
 // Registration route
-userRoute.post("/register", async (req, res) => {
+userRoute.post(["/register", "/register/"], async (req, res) => {
   try {
     const user = await register(req.body);
 
@@ -25,7 +25,7 @@ userRoute.post("/register", async (req, res) => {
 });
 
 // Login route
-userRoute.post("/login", async (req, res) => {
+userRoute.post(["/login", "/login/"], async (req, res) => {
   try {
     const { email, password } = req.body;
 
@@ -50,7 +50,7 @@ userRoute.post("/login", async (req, res) => {
 });
 
 // Logout route
-userRoute.post("/logout", (req, res) => {
+userRoute.post(["/logout", "/logout/"], (req, res) => {
   res.clearCookie("token", {
     httpOnly: true,
     secure: false, // true in production (HTTPS)
@@ -64,7 +64,7 @@ userRoute.post("/logout", (req, res) => {
 });
 
 // Profile / Current User route
-userRoute.get("/me", verifyToken, (req, res) => {
+userRoute.get(["/me", "/me/"], verifyToken, (req, res) => {
   res.status(200).json({
     success: true,
     user: req.user,
@@ -72,7 +72,7 @@ userRoute.get("/me", verifyToken, (req, res) => {
 });
 
 // Update Profile route
-userRoute.put("/update-profile", verifyToken, async (req, res) => {
+userRoute.put(["/update-profile", "/update-profile/"], verifyToken, async (req, res) => {
   try {
     const userId = req.user.userId;
     const { firstName, lastName, currentPassword, newPassword } = req.body;
