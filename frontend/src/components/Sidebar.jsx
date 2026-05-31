@@ -28,12 +28,8 @@ export const DocumentsList = ({ documents = [], onDocumentClick }) => {
                 <FileText className="w-4 h-4 text-blue-500 flex-shrink-0" />
                 <span className="truncate">{doc.title}</span>
               </div>
-              {isOwner ? (
-                <span className="flex-shrink-0 bg-green-50 text-green-700 border border-green-200 text-[8px] font-extrabold tracking-wider px-1.5 py-0.5 rounded uppercase">
-                  OWNER
-                </span>
-              ) : (
-                <span className="flex-shrink-0 bg-blue-50 text-blue-700 border border-blue-200 text-[8px] font-extrabold tracking-wider px-1.5 py-0.5 rounded uppercase">
+              {!isOwner && (
+                <span className="flex-shrink-0 bg-red-50 text-red-600 border border-red-200 text-[8px] font-extrabold tracking-wider px-1.5 py-0.5 rounded uppercase">
                   SHARED
                 </span>
               )}
