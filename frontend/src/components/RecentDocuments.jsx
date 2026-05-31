@@ -9,15 +9,11 @@ const RecentDocuments = ({ documents = [], onDocumentClick, formatCreated, forma
     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
       {children}
       {documents.map((doc) => {
-        // Robust check to see if document is owned by someone else (i.e. shared with us)
-        const isShared = doc.owner && user && 
+        // Logic to determine ownership
+        const isOwner = doc.owner && user && 
           (typeof doc.owner === "object" 
-            ? (doc.owner._id !== user.userId && doc.owner._id !== user._id)
-            : (doc.owner !== user.userId && doc.owner !== user._id));
-
-        const ownerName = doc.owner && typeof doc.owner === "object"
-          ? (doc.owner.firstName ? `${doc.owner.firstName} ${doc.owner.lastName || ""}`.trim() : doc.owner.email)
-          : "Another User";
+            ? (doc.owner._id === user.userId || doc.owner._id === user._id)
+            : (doc.owner === user.userId || doc.owner === user._id));
 
         return (
           <div
@@ -33,16 +29,20 @@ const RecentDocuments = ({ documents = [], onDocumentClick, formatCreated, forma
             {/* Card Info Area */}
             <div className="p-4 relative flex-grow flex flex-col justify-between">
               <div>
-                <h4 className="text-sm font-semibold text-gray-800 truncate mb-1 pr-7">
-                  {doc.title}
-                </h4>
-                {isShared && (
-                  <div className="mb-2">
-                    <span className="inline-block bg-red-50 text-red-600 text-[10px] font-bold px-2.5 py-0.5 rounded-full border border-red-100">
-                      Shared by {ownerName}
+                <div className="flex items-center justify-between mb-2 pr-7">
+                  <h4 className="text-sm font-semibold text-gray-800 truncate mr-2 flex-1">
+                    {doc.title}
+                  </h4>
+                  {isOwner ? (
+                    <span className="flex-shrink-0 bg-green-50 text-green-700 border border-green-200 text-[9px] font-extrabold tracking-wider px-2 py-0.5 rounded uppercase">
+                      OWNER
                     </span>
-                  </div>
-                )}
+                  ) : (
+                    <span className="flex-shrink-0 bg-blue-50 text-blue-700 border border-blue-200 text-[9px] font-extrabold tracking-wider px-2 py-0.5 rounded uppercase">
+                      SHARED
+                    </span>
+                  )}
+                </div>
                 <p className="text-[11px] text-gray-500 font-medium">
                   {formatCreated ? formatCreated(doc.createdAt) : `Created: ${doc.createdAt || "Unknown"}`}
                 </p>

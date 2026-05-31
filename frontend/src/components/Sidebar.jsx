@@ -1,25 +1,46 @@
 import React from "react";
 import { FileText, Trash2, BookOpen, LogOut } from "lucide-react";
+import { useAuth } from "../contexts/AuthContext";
 
 // DocumentsList component
 export const DocumentsList = ({ documents = [], onDocumentClick }) => {
+  const { user } = useAuth();
+
   if (documents.length === 0) {
     return <p className="text-xs text-gray-400 px-4 py-2 italic">No active documents</p>;
   }
 
   return (
     <ul className="space-y-1 px-2">
-      {documents.map((doc) => (
-        <li key={doc._id || doc.id}>
-          <button
-            onClick={() => onDocumentClick(doc._id || doc.id)}
-            className="w-full text-left px-3 py-2 rounded-md text-sm text-gray-700 hover:bg-gray-200 transition-colors duration-150 flex items-center gap-2 truncate"
-          >
-            <FileText className="w-4 h-4 text-blue-500 flex-shrink-0" />
-            <span className="truncate">{doc.title}</span>
-          </button>
-        </li>
-      ))}
+      {documents.map((doc) => {
+        const isOwner = doc.owner && user &&
+          (typeof doc.owner === "object"
+            ? (doc.owner._id === user.userId || doc.owner._id === user._id)
+            : (doc.owner === user.userId || doc.owner === user._id));
+
+        return (
+          <li key={doc._id || doc.id}>
+            <button
+              onClick={() => onDocumentClick(doc._id || doc.id)}
+              className="w-full text-left px-3 py-2 rounded-md text-sm text-gray-700 hover:bg-gray-200 transition-colors duration-150 flex items-center justify-between gap-2 min-w-0"
+            >
+              <div className="flex items-center gap-2 min-w-0 flex-1">
+                <FileText className="w-4 h-4 text-blue-500 flex-shrink-0" />
+                <span className="truncate">{doc.title}</span>
+              </div>
+              {isOwner ? (
+                <span className="flex-shrink-0 bg-green-50 text-green-700 border border-green-200 text-[8px] font-extrabold tracking-wider px-1.5 py-0.5 rounded uppercase">
+                  OWNER
+                </span>
+              ) : (
+                <span className="flex-shrink-0 bg-blue-50 text-blue-700 border border-blue-200 text-[8px] font-extrabold tracking-wider px-1.5 py-0.5 rounded uppercase">
+                  SHARED
+                </span>
+              )}
+            </button>
+          </li>
+        );
+      })}
     </ul>
   );
 };
