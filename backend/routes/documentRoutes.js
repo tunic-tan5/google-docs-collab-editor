@@ -18,24 +18,6 @@ documentRoute.post("/create", verifyToken, async (req, res) => {
         message: "User not found",
       });
     }
-
-    // Check if an active document with title "Untitled Document" already exists for this user
-    const duplicateDoc = await DocumentModel.findOne({
-      $or: [
-        { owner: userId },
-        { "collaborators.user": userId }
-      ],
-      title: "Untitled Document",
-      isDeleted: { $ne: true }
-    });
-
-    if (duplicateDoc) {
-      return res.status(400).json({
-        success: false,
-        message: "Name already used! Please rename your existing 'Untitled Document' first.",
-      });
-    }
-
     const doc = await createDocument(userId);
 
     res.status(201).json({

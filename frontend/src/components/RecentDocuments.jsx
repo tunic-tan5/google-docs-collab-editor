@@ -15,8 +15,8 @@ const RecentDocuments = ({ documents = [], onDocumentClick, formatCreated, forma
             ? (doc.owner._id !== user.userId && doc.owner._id !== user._id)
             : (doc.owner !== user.userId && doc.owner !== user._id));
 
-        const ownerName = typeof doc.owner === "object"
-          ? `${doc.owner.firstName || ""} ${doc.owner.lastName || ""}`.trim() || doc.owner.email
+        const ownerName = doc.owner && typeof doc.owner === "object"
+          ? (doc.owner.firstName ? `${doc.owner.firstName} ${doc.owner.lastName || ""}`.trim() : doc.owner.email)
           : "Another User";
 
         return (
