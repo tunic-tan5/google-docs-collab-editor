@@ -60,7 +60,8 @@ const RecentDocuments = ({ documents = [], onDocumentClick, formatCreated, forma
             </button>
           </div>
         </div>
-      ))}
+      );
+    })}
     </div>
   );
 };
