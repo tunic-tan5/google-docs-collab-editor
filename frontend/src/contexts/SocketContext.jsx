@@ -18,7 +18,7 @@ export const SocketProvider = ({ children }) => {
     }
 
     // Connect to Socket.IO backend
-    const socketUrl = import.meta.env.VITE_API_URL;
+    const socketUrl = import.meta.env.VITE_API_URL || "https://google-docs-collab-editor.onrender.com";
     const token = localStorage.getItem("token");
     const newSocket = io(socketUrl, {
       auth: { token },
