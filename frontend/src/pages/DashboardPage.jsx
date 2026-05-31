@@ -16,70 +16,22 @@ export const DashboardPage = () => {
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
 
-  // Fallback Mock Data as specified by user
-  const mockDocuments = [
-    { 
-      _id: "dbms-notes", 
-      title: "DBMS Notes", 
-      createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
-      updatedAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString()
-    },
-    { 
-      _id: "project-proposal", 
-      title: "Project Proposal", 
-      createdAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
-      updatedAt: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
-    },
-    { 
-      _id: "wt-assignment", 
-      title: "WT Assignment", 
-      createdAt: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000).toISOString(),
-      updatedAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString()
-    },
-    { 
-      _id: "meeting-notes", 
-      title: "Meeting Notes", 
-      createdAt: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000).toISOString(),
-      updatedAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString()
-    },
-  ];
-
-  const mockTrashDocs = [
-    { 
-      _id: "old-notes", 
-      title: "Old Notes", 
-      createdAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(),
-      updatedAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString() 
-    },
-    { 
-      _id: "test-document", 
-      title: "Test Document", 
-      createdAt: new Date(Date.now() - 20 * 24 * 60 * 60 * 1000).toISOString(),
-      updatedAt: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString() 
-    },
-  ];
-
-  // Fetch documents from backend, fall back to mock data on error/empty
+  // Fetch documents from backend
   const fetchDocuments = async () => {
     try {
       setLoading(true);
       const activeRes = await api.get("/api/documents/getalldocs");
       const trashRes = await api.get("/api/documents/gettrashdocs");
       
-      const serverDocs = activeRes.data?.success && activeRes.data.documents.length > 0
-        ? activeRes.data.documents
-        : mockDocuments;
-
-      const serverTrash = trashRes.data?.success && trashRes.data.documents.length > 0
-        ? trashRes.data.documents
-        : mockTrashDocs;
+      const serverDocs = activeRes.data?.success ? activeRes.data.documents : [];
+      const serverTrash = trashRes.data?.success ? trashRes.data.documents : [];
 
       setDocuments(serverDocs);
       setTrashDocs(serverTrash);
     } catch (err) {
-      console.warn("Backend API not reachable. Using offline mock data.");
-      setDocuments(mockDocuments);
-      setTrashDocs(mockTrashDocs);
+      console.warn("Backend API not reachable.");
+      setDocuments([]);
+      setTrashDocs([]);
     } finally {
       setLoading(false);
     }
